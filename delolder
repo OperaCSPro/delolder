@@ -1,0 +1,91 @@
+#!/bin/bash
+
+usage() {
+    echo "Usage: delolder [-v|-d] N [--] dirs"
+}
+
+days=""
+verbose=false
+dry_run=false
+dirs=()
+seen_days=false
+
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "--" ]; then
+        shift
+        while [ "$#" -gt 0 ]; do
+            dirs+=("$1")
+            shift
+        done
+        break
+    fi
+
+    case "$1" in
+        -v)
+            verbose=true
+            ;;
+        -d)
+            dry_run=true
+            ;;
+        -*)
+            echo "Error: invalid option: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+        *)
+            if [ "$seen_days" = false ]; then
+                days="$1"
+                seen_days=true
+            else
+                dirs+=("$1")
+            fi
+            ;;
+    esac
+
+    shift
+done
+
+if [ "$seen_days" = false ] || ! [[ "$days" =~ ^[0-9]+$ ]]; then
+    echo "Error: N must be a non-negative integer" >&2
+    usage >&2
+    exit 1
+fi
+
+if [ "${#dirs[@]}" -eq 0 ]; then
+    echo "Error: at least one directory is required" >&2
+    usage >&2
+    exit 1
+fi
+
+unique_dirs=()
+for dir in "${dirs[@]}"; do
+    duplicate=false
+
+    for existing in "${unique_dirs[@]}"; do
+        if [ "$dir" = "$existing" ]; then
+            duplicate=true
+            break
+        fi
+    done
+
+    if [ "$duplicate" = false ]; then
+        unique_dirs+=("$dir")
+    fi
+done
+
+for dir in "${unique_dirs[@]}"; do
+    if [ ! -d "$dir" ]; then
+        echo "Error: '$dir' is not a directory" >&2
+        exit 1
+    fi
+done
+
+if [ "$dry_run" = true ]; then
+    find "${unique_dirs[@]}" -type f -mtime +"$days" -print
+else
+    if [ "$verbose" = true ]; then
+        find "${unique_dirs[@]}" -type f -mtime +"$days" -print -delete
+    else
+        find "${unique_dirs[@]}" -type f -mtime +"$days" -delete
+    fi
+fi
