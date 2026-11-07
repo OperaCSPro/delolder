@@ -73,19 +73,24 @@ for dir in "${dirs[@]}"; do
     fi
 done
 
+find_dirs=()
 for dir in "${unique_dirs[@]}"; do
+    if [[ "$dir" == -* ]]; then
+        dir="./$dir"
+    fi
+
     if [ ! -d "$dir" ]; then
         echo "Error: '$dir' is not a directory" >&2
         exit 1
     fi
+
+    find_dirs+=("$dir")
 done
 
 if [ "$dry_run" = true ]; then
-    find "${unique_dirs[@]}" -type f -mtime +"$days" -print
+    find "${find_dirs[@]}" -type f -mtime +"$days" -print
+elif [ "$verbose" = true ]; then
+    find "${find_dirs[@]}" -type f -mtime +"$days" -print -delete
 else
-    if [ "$verbose" = true ]; then
-        find "${unique_dirs[@]}" -type f -mtime +"$days" -print -delete
-    else
-        find "${unique_dirs[@]}" -type f -mtime +"$days" -delete
-    fi
+    find "${find_dirs[@]}" -type f -mtime +"$days" -delete
 fi
